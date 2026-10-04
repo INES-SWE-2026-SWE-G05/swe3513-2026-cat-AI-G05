@@ -151,3 +151,9 @@ def write_model_card(
     )
     out_path.write_text(card, encoding="utf-8")
     return card
+
+def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
+    """Fraction of correctly classified samples."""
+    y_true = np.asarray(y_true, dtype=int)
+    y_pred = np.asarray(y_pred, dtype=int)
+    return float(np.mean(y_true == y_pred))
