@@ -129,6 +129,8 @@ def create_delivery(delivery: DeliveryIn):
 
 
 @app.get("/deliveries")
-def list_deliveries():
+def list_deliveries(sector: str | None = None):
     """Return all deliveries recorded in this session."""
+    if sector:
+        return [d for d in _deliveries if d.get("sector", "").upper() == sector.upper()]
     return _deliveries
