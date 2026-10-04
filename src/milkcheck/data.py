@@ -104,3 +104,9 @@ def clean_deliveries(df: pd.DataFrame) -> pd.DataFrame:
     out = out.drop_duplicates(subset="delivery_id", keep="first")
 
     return out.reset_index(drop=True)
+
+def count_records(path=DATA_FILE) -> dict:
+    """Return {"raw": int, "clean": int} for quick smoke-testing."""
+    raw = load_deliveries(path)
+    clean = clean_deliveries(raw)
+    return {"raw": len(raw), "clean": len(clean)}
