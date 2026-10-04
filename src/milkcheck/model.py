@@ -121,3 +121,7 @@ def predict_proba(X: np.ndarray, w: np.ndarray) -> np.ndarray:
     n = X.shape[0]
     Xb = np.hstack([X, np.ones((n, 1))])
     return sigmoid(Xb @ w)
+
+def predict(X: np.ndarray, w: np.ndarray, threshold: float = 0.5) -> np.ndarray:
+    """Return binary predictions (0 or 1) from probability scores."""
+    return (predict_proba(X, w) >= threshold).astype(int)
