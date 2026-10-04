@@ -68,3 +68,8 @@ def litres_per_day(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index(drop=True)
     )
     return daily
+
+def top_rejected_sectors(df, n: int = 3):
+    """Return the top *n* sectors with the highest rejection_rate."""
+    summary = summary_by_sector(df)
+    return summary.nlargest(n, "rejection_rate").reset_index(drop=True)
