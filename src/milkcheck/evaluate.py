@@ -18,6 +18,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+__all__ = ["confusion_matrix", "precision", "recall", "f1_score", "accuracy", "write_model_card"]
+
 
 # ── Confusion matrix ─────────────────────────────────────────
 def confusion_matrix(
