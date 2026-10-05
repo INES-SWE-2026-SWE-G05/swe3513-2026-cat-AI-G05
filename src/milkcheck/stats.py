@@ -39,7 +39,7 @@ def summary_by_sector(df: pd.DataFrame) -> pd.DataFrame:
             rejected=("rejected", "sum"),
         )
     )
-    grouped["rejection_rate"] = grouped["rejected"] / grouped["deliveries"]
+    grouped["rejection_rate"] = (grouped["rejected"] / grouped["deliveries"]).round(4)
     grouped = grouped.sort_values("total_litres", ascending=False).reset_index(drop=True)
     return grouped[["sector", "total_litres", "deliveries", "rejected", "rejection_rate"]]
 
