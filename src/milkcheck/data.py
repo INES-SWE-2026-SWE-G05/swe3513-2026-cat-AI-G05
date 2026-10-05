@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pandas as pd
 
+__all__ = ["load_deliveries", "clean_deliveries", "count_records"]
+
 # parents[2] goes up from src/milkcheck/data.py to the repository folder.
 DATA_FILE = Path(__file__).resolve().parents[2] / "data" / "deliveries.csv"
 REQUIRED_COLUMNS = ["delivery_id", "date", "sector", "farmer_id", "litres",
