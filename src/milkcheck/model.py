@@ -32,7 +32,7 @@ def sigmoid(z: np.ndarray) -> np.ndarray:
     np.ndarray
         Values in (0, 1), same shape as *z*.
     """
-    z = np.clip(z, -500, 500)
+    z = np.clip(z, -500, 500)  # prevents overflow in exp for extreme values
     return 1.0 / (1.0 + np.exp(-z))
 
 
