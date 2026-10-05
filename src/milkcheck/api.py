@@ -69,7 +69,8 @@ class DeliveryIn(BaseModel):
 @app.get("/health")
 def health():
     """Liveness probe – returns 200 when the server is up."""
-    return {"status": "ok", "model_ready": _ready}
+    record_count = len(_df) if _ready and _df is not None else 0
+    return {"status": "ok", "model_ready": _ready, "training_records": record_count}
 
 
 # ── /summary ─────────────────────────────────────────────────
