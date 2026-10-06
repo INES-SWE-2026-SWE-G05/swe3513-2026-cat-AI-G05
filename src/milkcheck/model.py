@@ -125,3 +125,9 @@ def predict_proba(X: np.ndarray, w: np.ndarray) -> np.ndarray:
 def predict(X: np.ndarray, w: np.ndarray, threshold: float = 0.5) -> np.ndarray:
     """Return binary predictions (0 or 1) from probability scores."""
     return (predict_proba(X, w) >= threshold).astype(int)
+
+def binary_cross_entropy(y_true: np.ndarray, proba: np.ndarray) -> float:
+    """Compute mean binary cross-entropy (log loss)."""
+    eps   = 1e-15
+    proba = np.clip(proba, eps, 1 - eps)
+    return float(-np.mean(y_true * np.log(proba) + (1 - y_true) * np.log(1 - proba)))
