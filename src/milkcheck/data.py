@@ -12,7 +12,7 @@ uses: everyone else's work starts from your two functions.
      turn the date text into real dates.
   2. clean_deliveries(): fix the codes and remove the rows nobody can trust.
 
-Done means: python -m pytest tests/test_a1_data.py -v  -> 6 passed,
+Done means: python -m pytest tests/test_a1_data.py -v (all 6 tests passing)  -> 6 passed,
 merged into main through a pull request reviewed by a teammate.
 """
 from pathlib import Path
