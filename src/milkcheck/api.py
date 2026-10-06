@@ -97,6 +97,10 @@ def risk(req: RiskRequest):
     Returns
     -------
     {"risk_score": float, "risk_label": "LOW"|"MEDIUM"|"HIGH"}
+
+    Raises
+    ------
+    422 Unprocessable Entity : when field values are out of the allowed range.
     """
     if not _ready or _w is None:
         raise HTTPException(status_code=503, detail="Model not ready")
