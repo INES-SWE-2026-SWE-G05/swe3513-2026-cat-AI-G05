@@ -159,3 +159,13 @@ def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     y_true = np.asarray(y_true, dtype=int)
     y_pred = np.asarray(y_pred, dtype=int)
     return float(np.mean(y_true == y_pred))
+
+def classification_report(y_true: np.ndarray, y_pred: np.ndarray) -> str:
+    """Return a formatted string report."""
+    lines = [
+        f"Precision : {precision(y_true, y_pred):.3f}",
+        f"Recall    : {recall(y_true, y_pred):.3f}",
+        f"F1 score  : {f1_score(y_true, y_pred):.3f}",
+        f"Accuracy  : {accuracy(y_true, y_pred):.3f}",
+    ]
+    return "\n".join(lines)
