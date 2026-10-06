@@ -14,6 +14,8 @@ merged into main through a pull request reviewed by a teammate.
 """
 import pandas as pd
 
+__all__ = ["summary_by_sector", "litres_per_day", "top_rejected_sectors"]
+
 
 def summary_by_sector(df: pd.DataFrame) -> pd.DataFrame:
     """Return one row per sector with these columns, in this order:
