@@ -139,3 +139,8 @@ def list_deliveries(sector: str | None = None):
     if sector:
         return [d for d in _deliveries if d.get("sector", "").upper() == sector.upper()]
     return _deliveries
+
+# Added basic diagnostic endpoint
+@app.get("/diagnostics")
+def diagnostics():
+    return {"status": "ok", "records": len(_deliveries)}
