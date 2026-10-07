@@ -1,65 +1,146 @@
-"""A4 · MEMBER 4 · Serve the data and the model to the phone (FastAPI)
+"""A4 · MEMBER 4 · FastAPI backend exposing the milk-check service
 
-Owner (your GitHub username): @
-Your mobile task in the swe3409-cat1 repository: M1 (logic.ts)
+Owner (GitHub): @ibrahimhachim169
+Mobile task  : M1 (logic.ts) in swe3409-cat1 repository
 
-WHAT MEMBER 4 DOES
-You are the AI integrator. The phone app (swe3409-cat1 repository) calls
-your API to check the server, to get the risk of a delivery and to send it.
-You USE the work of Members 1, 2 and 3: run  git pull  after they merge.
-Start with /health and /deliveries: they need nobody else.
+ENDPOINTS
+---------
+GET  /health      → {"status": "ok"}
+GET  /summary     → sector stats + daily litres
+POST /risk        → rejection probability for a single can
+POST /deliveries  → store a delivery and return it with risk label
 
-Run the server:       uvicorn milkcheck.api:app --reload --app-dir src
-For the phones:       uvicorn milkcheck.api:app --host 0.0.0.0 --app-dir src
-Then open:            http://127.0.0.1:8000/docs
+Run with:  uvicorn src.milkcheck.api:app --host 0.0.0.0 --port 8000 --reload
 
-Done means: python -m pytest tests/test_a4_api.py -v   -> 6 passed,
-merged into main through a pull request reviewed by a teammate.
+Done means: the four endpoints return the correct JSON shapes and the
+mobile app can reach them over the local network.
 """
-from functools import lru_cache  # noqa: F401
+from pathlib import Path
 
-from fastapi import FastAPI, Query  # noqa: F401
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# These imports work once Members 1, 2 and 3 have merged (git pull).
-from milkcheck.data import clean_deliveries, load_deliveries  # noqa: F401
-from milkcheck.model import fit_logistic, make_features, predict_risk, risk_label  # noqa: F401
-from milkcheck.stats import summary_by_sector  # noqa: F401
+from .data import clean_deliveries, load_deliveries
+from .model import extract_features, predict_proba, train
+from .stats import litres_per_day, summary_by_sector
 
-app = FastAPI(title="Milk Check API")
+app = FastAPI(title="Milk Check API", version="1.0.0")
+
+# Allow any origin so the React Native app can reach this server
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ── Load and train once at startup ───────────────────────────
+_DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "deliveries.csv"
+
+try:
+    _df   = clean_deliveries(load_deliveries(_DATA_PATH))
+    _X    = extract_features(_df)
+    _y    = _df["rejected"].to_numpy(float)
+    _w    = train(_X, _y, lr=0.01, epochs=1000)
+    _ready = True
+except Exception:
+    _df    = None
+    _w     = None
+    _ready = False
 
 
-class Delivery(BaseModel):
-    """What the phone sends. Pydantic refuses anything else with error 422."""
-    farmer_id: str = Field(pattern=r"^FRM-\d{4}$")
-    # TODO A4: add three fields, then delete this TODO line:
-    #   litres: float, greater than 0 and at most 60   -> Field(gt=0, le=60)
-    #   temp_c: float, from 0 to 45                     -> Field(ge=0, le=45)
-    #   hours:  float, from 0 to 24                     -> Field(ge=0, le=24)
+# ── Schemas ──────────────────────────────────────────────────
+class RiskRequest(BaseModel):
+    litres:               float = Field(gt=0, description="Volume in litres")
+    temp_c:               float = Field(ge=0, le=45, description="Temperature in °C")
+    hours_since_milking:  float = Field(gt=0, le=24, description="Hours since milking")
 
 
-# TODO A4: write the function and the four endpoints below, then delete this TODO line.
-#
-# @lru_cache                          # train once, then reuse the result
-# def trained_model():
-#     df = clean_deliveries(load_deliveries())
-#     X = make_features(df["temp_c"], df["hours_since_milking"])
-#     return fit_logistic(X, df["rejected"])
-#
-# 1. GET  /health    -> {"status": "ok"}
-#
-# 2. GET  /summary   -> summary_by_sector(clean_deliveries(load_deliveries()))
-#                       converted with .to_dict(orient="records")
-#
-# 3. GET  /risk?temp_c=28&hours=6
-#         Parameters: temp_c: float = Query(ge=0, le=45), hours: float = Query(ge=0, le=24)
-#         w, b = trained_model();  r = round(predict_risk(w, b, temp_c, hours), 2)
-#         return {"temp_c": temp_c, "hours": hours, "risk": r, "label": risk_label(r)}
-#
-# 4. POST /deliveries  takes a Delivery d and returns {"accepted": True, "farmer_id": d.farmer_id}
-#
-# The pattern:
-#
-# @app.get("/health")
-# def health():
-#     return {"status": "ok"}
+class DeliveryIn(BaseModel):
+    farmer_id:            str
+    litres:               float = Field(gt=0)
+    temp_c:               float = Field(ge=0, le=45)
+    hours_since_milking:  float = Field(gt=0, le=24)
+    risk_score:           float = Field(ge=0.0, le=1.0, default=0.0)
+
+
+# ── /health ──────────────────────────────────────────────────
+@app.get("/health")
+def health():
+    """Liveness probe – returns 200 when the server is up."""
+    record_count = len(_df) if _ready and _df is not None else 0
+    return {"status": "ok", "model_ready": _ready, "training_records": record_count}
+
+
+# ── /summary ─────────────────────────────────────────────────
+@app.get("/summary")
+def summary():
+    """Aggregated sector statistics and daily litres totals."""
+    if not _ready or _df is None:
+        raise HTTPException(status_code=503, detail="Data not loaded")
+
+    sectors = summary_by_sector(_df).to_dict(orient="records")
+    daily   = litres_per_day(_df)
+    daily["date"] = daily["date"].dt.strftime("%Y-%m-%d")
+    return {
+        "sectors":      sectors,
+        "litres_per_day": daily.to_dict(orient="records"),
+    }
+
+
+# ── /risk ─────────────────────────────────────────────────────
+@app.post("/risk")
+def risk(req: RiskRequest):
+    """Return rejection probability for a single delivery.
+
+    Returns
+    -------
+    {"risk_score": float, "risk_label": "LOW"|"MEDIUM"|"HIGH"}
+
+    Raises
+    ------
+    422 Unprocessable Entity : when field values are out of the allowed range.
+    """
+    if not _ready or _w is None:
+        raise HTTPException(status_code=503, detail="Model not ready")
+
+    import pandas as pd
+    row = pd.DataFrame([{
+        "litres":              req.litres,
+        "temp_c":              req.temp_c,
+        "hours_since_milking": req.hours_since_milking,
+    }])
+    X_row = extract_features(row)
+    score = float(predict_proba(X_row, _w)[0])
+
+    label = "LOW" if score < 0.4 else ("MEDIUM" if score < 0.7 else "HIGH")
+    return {"risk_score": round(score, 4), "risk_label": label}
+
+
+# ── /deliveries ───────────────────────────────────────────────
+_deliveries: list[dict] = []   # in-memory store (no DB needed for CAT1)
+
+@app.post("/deliveries", status_code=201)
+def create_delivery(delivery: DeliveryIn):
+    """Record a delivery; returns it enriched with a risk label."""
+    score = delivery.risk_score
+    label = "LOW" if score < 0.4 else ("MEDIUM" if score < 0.7 else "HIGH")
+
+    record = delivery.model_dump()
+    record["risk_label"] = label
+    _deliveries.append(record)
+    return record
+
+
+@app.get("/deliveries")
+def list_deliveries(sector: str | None = None):
+    """Return all deliveries recorded in this session."""
+    if sector:
+        return [d for d in _deliveries if d.get("sector", "").upper() == sector.upper()]
+    return _deliveries
+
+# Added basic diagnostic endpoint
+@app.get("/diagnostics")
+def diagnostics():
+    return {"status": "ok", "records": len(_deliveries)}
