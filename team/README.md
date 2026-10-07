@@ -7,12 +7,12 @@ swe3409-cat1 repository.
 Copy this, keep the line labels exactly as they are, and fill it in:
 
 ```markdown
-# Aline Uwase
-- GitHub: @aline-uwase
-- Member: 1
-- AI task (swe3513-cat1 repo): A1 data.py
-- Mobile task (swe3409-cat1 repo): M3 DeliveryList
-- What I did today:
+# yaya goun souleyman
+- GitHub: yayagouni0@
+- Member: 5
+- AI task (swe3513-cat1 repo): A5 evaluate.py
+- Mobile task (swe3409-cat1 repo): M5 health
+- What I did today: i push evaluate, i did all my task and so on...
 - One thing I am stuck on:
 ```
 
