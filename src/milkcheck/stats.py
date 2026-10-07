@@ -31,8 +31,20 @@ def summary_by_sector(df: pd.DataFrame) -> pd.DataFrame:
         g = df.groupby("sector").agg(deliveries=("delivery_id", "count"), ...).reset_index()
         g = g.sort_values(["total_litres", "sector"], ascending=[False, True])
     """
-    # TODO A2: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A2 summary_by_sector is not written yet")
+    summary = (
+        df.groupby("sector")
+        .agg(
+            deliveries=("delivery_id", "count"),
+            total_litres=("litres", "sum"),
+            rejection_rate=("rejected", "mean"),
+        )
+        .reset_index()
+    )
+    summary["total_litres"] = summary["total_litres"].round(1)
+    summary["rejection_rate"] = summary["rejection_rate"].round(2)
+    return summary.sort_values(
+        ["total_litres", "sector"], ascending=[False, True]
+    ).reset_index(drop=True)
 
 
 def litres_by_day(df: pd.DataFrame) -> pd.DataFrame:
@@ -42,5 +54,6 @@ def litres_by_day(df: pd.DataFrame) -> pd.DataFrame:
     Tip: df.groupby(df["date"].dt.date)["litres"].sum().round(1).reset_index()
          then rename the columns to ["date", "total_litres"].
     """
-    # TODO A2: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A2 litres_by_day is not written yet")
+    result = df.groupby(df["date"].dt.date)["litres"].sum().round(1).reset_index()
+    result.columns = ["date", "total_litres"]
+    return result.sort_values("date").reset_index(drop=True)

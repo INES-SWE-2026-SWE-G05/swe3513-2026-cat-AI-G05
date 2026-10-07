@@ -35,8 +35,12 @@ def load_deliveries(path=DATA_FILE) -> pd.DataFrame:
     3. df["date"] = pd.to_datetime(df["date"])
     4. return df
     """
-    # TODO A1: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A1 load_deliveries is not written yet")
+    df = pd.read_csv(path)
+    missing = [column for column in REQUIRED_COLUMNS if column not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns: {missing}")
+    df["date"] = pd.to_datetime(df["date"])
+    return df
 
 
 def clean_deliveries(df: pd.DataFrame) -> pd.DataFrame:
@@ -56,5 +60,12 @@ def clean_deliveries(df: pd.DataFrame) -> pd.DataFrame:
     9. return out.reset_index(drop=True)
     On the real file: 68 rows in, 62 rows out.
     """
-    # TODO A1: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A1 clean_deliveries is not written yet")
+    out = df.copy()
+    out["farmer_id"] = out["farmer_id"].astype("string").str.strip().str.upper()
+    out["sector"] = out["sector"].astype("string").str.strip().str.title()
+    out = out[out["farmer_id"].notna() & out["farmer_id"].ne("")]
+    out = out[out["litres"].gt(0) & out["litres"].le(60)]
+    out = out[out["temp_c"].between(0, 45)]
+    out = out.drop_duplicates(subset="delivery_id", keep="first")
+    out["rejected"] = out["rejected"].astype(int)
+    return out.reset_index(drop=True)

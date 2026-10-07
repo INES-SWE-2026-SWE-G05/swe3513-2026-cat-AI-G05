@@ -32,34 +32,45 @@ app = FastAPI(title="Milk Check API")
 class Delivery(BaseModel):
     """What the phone sends. Pydantic refuses anything else with error 422."""
     farmer_id: str = Field(pattern=r"^FRM-\d{4}$")
-    # TODO A4: add three fields, then delete this TODO line:
-    #   litres: float, greater than 0 and at most 60   -> Field(gt=0, le=60)
-    #   temp_c: float, from 0 to 45                     -> Field(ge=0, le=45)
-    #   hours:  float, from 0 to 24                     -> Field(ge=0, le=24)
+    litres: float = Field(gt=0, le=60)
+    temp_c: float = Field(ge=0, le=45)
+    hours: float = Field(ge=0, le=24)
 
 
-# TODO A4: write the function and the four endpoints below, then delete this TODO line.
-#
-# @lru_cache                          # train once, then reuse the result
-# def trained_model():
-#     df = clean_deliveries(load_deliveries())
-#     X = make_features(df["temp_c"], df["hours_since_milking"])
-#     return fit_logistic(X, df["rejected"])
-#
-# 1. GET  /health    -> {"status": "ok"}
-#
-# 2. GET  /summary   -> summary_by_sector(clean_deliveries(load_deliveries()))
-#                       converted with .to_dict(orient="records")
-#
-# 3. GET  /risk?temp_c=28&hours=6
-#         Parameters: temp_c: float = Query(ge=0, le=45), hours: float = Query(ge=0, le=24)
-#         w, b = trained_model();  r = round(predict_risk(w, b, temp_c, hours), 2)
-#         return {"temp_c": temp_c, "hours": hours, "risk": r, "label": risk_label(r)}
-#
-# 4. POST /deliveries  takes a Delivery d and returns {"accepted": True, "farmer_id": d.farmer_id}
-#
-# The pattern:
-#
-# @app.get("/health")
-# def health():
-#     return {"status": "ok"}
+@lru_cache
+def trained_model():
+    """Train the model once and reuse it for subsequent risk requests."""
+    df = clean_deliveries(load_deliveries())
+    features = make_features(df["temp_c"], df["hours_since_milking"])
+    return fit_logistic(features, df["rejected"])
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+@app.get("/summary")
+async def summary():
+    df = clean_deliveries(load_deliveries())
+    return summary_by_sector(df).to_dict(orient="records")
+
+
+@app.get("/risk")
+async def risk(
+    temp_c: float = Query(ge=0, le=45),
+    hours: float = Query(ge=0, le=24),
+):
+    weights, bias = trained_model()
+    probability = round(predict_risk(weights, bias, temp_c, hours), 2)
+    return {
+        "temp_c": temp_c,
+        "hours": hours,
+        "risk": probability,
+        "label": risk_label(probability),
+    }
+
+
+@app.post("/deliveries")
+async def create_delivery(delivery: Delivery):
+    return {"accepted": True, "farmer_id": delivery.farmer_id}

@@ -28,8 +28,16 @@ def confusion(y_true, y_pred):
     fn: truly rejected but predicted accepted       tn: truly accepted and predicted accepted
     Tip: t = np.asarray(y_true).astype(int); p = ...; tp = int(((t == 1) & (p == 1)).sum())
     """
-    # TODO A5: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A5 confusion is not written yet")
+    truth = np.asarray(y_true).astype(int)
+    predicted = np.asarray(y_pred).astype(int)
+    if truth.shape != predicted.shape:
+        raise ValueError("y_true and y_pred must have the same shape")
+    return {
+        "tp": int(((truth == 1) & (predicted == 1)).sum()),
+        "fp": int(((truth == 0) & (predicted == 1)).sum()),
+        "fn": int(((truth == 1) & (predicted == 0)).sum()),
+        "tn": int(((truth == 0) & (predicted == 0)).sum()),
+    }
 
 
 def precision_recall(y_true, y_pred):
@@ -39,8 +47,12 @@ def precision_recall(y_true, y_pred):
     recall    = tp / (tp + fn)   - of the cans really rejected, how many we flagged
     If a denominator is 0, use 0.0 instead of crashing.
     """
-    # TODO A5: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A5 precision_recall is not written yet")
+    counts = confusion(y_true, y_pred)
+    precision_denominator = counts["tp"] + counts["fp"]
+    recall_denominator = counts["tp"] + counts["fn"]
+    precision = counts["tp"] / precision_denominator if precision_denominator else 0.0
+    recall = counts["tp"] / recall_denominator if recall_denominator else 0.0
+    return round(precision, 2), round(recall, 2)
 
 
 def write_model_card(df: pd.DataFrame, risks, threshold=0.5, path="docs/model_card.md") -> Path:
@@ -61,5 +73,25 @@ def write_model_card(df: pd.DataFrame, risks, threshold=0.5, path="docs/model_ca
     Tips: path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
           path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
     """
-    # TODO A5: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A5 write_model_card is not written yet")
+    predictions = (np.asarray(risks) >= threshold).astype(int)
+    counts = confusion(df["rejected"], predictions)
+    precision, recall = precision_recall(df["rejected"], predictions)
+    lines = [
+        "# Model card: milk rejection risk",
+        "",
+        "Purpose: warn the collector before the lab test. A person still decides.",
+        f"Data: {len(df)} clean deliveries (synthetic, for teaching).",
+        "Inputs: temp_c, hours_since_milking.",
+        f"Threshold: {threshold}",
+        f"Precision: {precision}",
+        f"Recall: {recall}",
+        (
+            f"Confusion: tp={counts['tp']} fp={counts['fp']} "
+            f"fn={counts['fn']} tn={counts['tn']}"
+        ),
+        "Limits: small synthetic data; not checked on real milk.",
+    ]
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return output_path

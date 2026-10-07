@@ -22,8 +22,13 @@ import numpy as np
 def sigmoid(z):
     """Return 1 / (1 + e^(-z)). z can be a number or an array.
     Tip: 1 / (1 + np.exp(-np.asarray(z, dtype=float)))"""
-    # TODO A3: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A3 sigmoid is not written yet")
+    values = np.asarray(z, dtype=float)
+    result = np.empty_like(values)
+    positive = values >= 0
+    result[positive] = 1 / (1 + np.exp(-values[positive]))
+    exp_values = np.exp(values[~positive])
+    result[~positive] = exp_values / (1 + exp_values)
+    return float(result) if result.ndim == 0 else result
 
 
 def make_features(temp_c, hours):
@@ -34,8 +39,11 @@ def make_features(temp_c, hours):
     1. temp_c = np.asarray(temp_c, dtype=float).reshape(-1); same for hours
     2. return np.column_stack([temp_c / 10, hours / 10])
     """
-    # TODO A3: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A3 make_features is not written yet")
+    temp_c = np.asarray(temp_c, dtype=float).reshape(-1)
+    hours = np.asarray(hours, dtype=float).reshape(-1)
+    if temp_c.size != hours.size:
+        raise ValueError("temp_c and hours must contain the same number of values")
+    return np.column_stack([temp_c / 10, hours / 10])
 
 
 def fit_logistic(X, y, lr=0.5, steps=3000):
@@ -51,8 +59,18 @@ def fit_logistic(X, y, lr=0.5, steps=3000):
            b  -= lr * np.mean(err)
     4. return [float(v) for v in w], float(b)
     """
-    # TODO A3: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A3 fit_logistic is not written yet")
+    X = np.asarray(X, dtype=float)
+    y = np.asarray(y, dtype=float).reshape(-1)
+    if X.ndim != 2 or X.shape[0] != y.size or y.size == 0:
+        raise ValueError("X and y must contain the same non-zero number of rows")
+    w = np.zeros(X.shape[1], dtype=float)
+    b = 0.0
+    for _ in range(steps):
+        probabilities = sigmoid(X @ w + b)
+        error = probabilities - y
+        w -= lr * (X.T @ error) / len(y)
+        b -= lr * np.mean(error)
+    return [float(value) for value in w], float(b)
 
 
 def predict_risk(w, b, temp_c, hours):
@@ -62,11 +80,14 @@ def predict_risk(w, b, temp_c, hours):
     1. p = sigmoid(make_features(temp_c, hours) @ np.asarray(w) + b)
     2. return float(p[0]) if p.size == 1 else p
     """
-    # TODO A3: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A3 predict_risk is not written yet")
+    probabilities = sigmoid(make_features(temp_c, hours) @ np.asarray(w) + b)
+    return float(probabilities[0]) if probabilities.size == 1 else probabilities
 
 
 def risk_label(risk):
     """Below 0.3 -> "Low";  below 0.6 -> "Medium";  otherwise -> "High"."""
-    # TODO A3: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A3 risk_label is not written yet")
+    if risk < 0.3:
+        return "Low"
+    if risk < 0.6:
+        return "Medium"
+    return "High"
