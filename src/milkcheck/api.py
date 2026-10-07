@@ -1,6 +1,6 @@
 """A4 · MEMBER 4 · Serve the data and the model to the phone (FastAPI)
 
-Owner (your GitHub username): @
+Owner (UmkalsumKarim): @umi
 Your mobile task in the swe3409-cat1 repository: M1 (logic.ts)
 
 WHAT MEMBER 4 DOES
