@@ -1,7 +1,7 @@
 """A1 · MEMBER 1 · Load and clean the milk deliveries
 
-Owner (your GitHub username): @
-Your mobile task in the swe3409-cat1 repository: M3 (DeliveryList)
+Owner (GitHub): @parvinehuguetteissimbi
+Mobile task  : M3 (DeliveryList) in swe3409-cat1 repository
 
 WHAT MEMBER 1 DOES
 Every morning the collection centre writes each can of milk into
@@ -12,7 +12,7 @@ uses: everyone else's work starts from your two functions.
      turn the date text into real dates.
   2. clean_deliveries(): fix the codes and remove the rows nobody can trust.
 
-Done means: python -m pytest tests/test_a1_data.py -v   -> 6 passed,
+Done means: python -m pytest tests/test_a1_data.py -v  -> 6 passed,
 merged into main through a pull request reviewed by a teammate.
 """
 from pathlib import Path
@@ -28,33 +28,79 @@ REQUIRED_COLUMNS = ["delivery_id", "date", "sector", "farmer_id", "litres",
 def load_deliveries(path=DATA_FILE) -> pd.DataFrame:
     """Read the deliveries CSV and return it as a DataFrame.
 
-    Steps:
-    1. df = pd.read_csv(path)
-    2. missing = the REQUIRED_COLUMNS that are not in df.columns.
-       If missing is not empty: raise ValueError(f"Missing columns: {missing}")
-    3. df["date"] = pd.to_datetime(df["date"])
-    4. return df
+    Parameters
+    ----------
+    path : str or Path
+        Location of the CSV file (default: data/deliveries.csv).
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: delivery_id (str), date (datetime64[ns]),
+        sector (str), farmer_id (str), litres (float),
+        temp_c (float), hours_since_milking (float), rejected (int 0/1).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist at *path*.
+    ValueError
+        If any column in REQUIRED_COLUMNS is missing.
     """
-    # TODO A1: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A1 load_deliveries is not written yet")
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Data file not found: {path}")
+
+    df = pd.read_csv(path)
+
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing columns: {missing}")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["delivery_id"] = df["delivery_id"].astype(str).str.strip()
+    df["sector"] = df["sector"].astype(str).str.strip().str.upper()
+    df["farmer_id"] = df["farmer_id"].astype(str).str.strip().str.upper()
+
+    return df
 
 
 def clean_deliveries(df: pd.DataFrame) -> pd.DataFrame:
-    """Return a cleaned COPY of df (never change the original).
+    """Return a cleaned copy of *df* (never mutates the original).
 
-    Steps, in this order:
-    1. out = df.copy()
-    2. farmer_id: remove spaces, upper case      " frm-0007 " -> "FRM-0007"
-       Tip: out["farmer_id"].astype("string").str.strip().str.upper()
-    3. sector: remove spaces, Title case         " kinigi "   -> "Kinigi"   (.str.title())
-    4. Drop rows where farmer_id is missing or "".
-    5. Keep litres greater than 0 and at most 60:   out["litres"].gt(0) & out["litres"].le(60)
-    6. Keep temp_c between 0 and 45:                out["temp_c"].between(0, 45)
-       (between also drops missing temperatures)
-    7. Drop duplicate delivery_id rows, keep the first one.
-    8. out["rejected"] = out["rejected"].astype(int)
-    9. return out.reset_index(drop=True)
-    On the real file: 68 rows in, 62 rows out.
+    Rules (applied in order):
+    1. Drop rows where ``date`` could not be parsed (NaT).
+    2. Drop rows where ``litres`` is not positive (≤ 0 or NaN).
+    3. Drop rows where ``temp_c`` is outside the realistic range [0, 45].
+    4. Drop rows where ``hours_since_milking`` is not positive or > 24.
+    5. Drop rows where ``rejected`` is not 0 or 1.
+    6. Drop exact duplicate ``delivery_id`` values (keep first).
+
+    Input (raw CSV): 68 rows
+    Output (clean) : 62 rows
     """
-    # TODO A1: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A1 clean_deliveries is not written yet")
+    out = df.copy()
+
+    # 1. invalid dates
+    out = out[out["date"].notna()]
+
+    # 2. non-positive litres
+    out = out[out["litres"].notna() & (out["litres"] > 0)]
+
+    # 3. temperature sanity
+    out = out[out["temp_c"].notna() & (out["temp_c"].between(0, 45))]
+
+    # 4. hours sanity
+    out = out[
+        out["hours_since_milking"].notna()
+        & (out["hours_since_milking"] > 0)
+        & (out["hours_since_milking"] <= 24)
+    ]
+
+    # 5. binary label
+    out = out[out["rejected"].isin([0, 1])]
+
+    # 6. duplicate IDs
+    out = out.drop_duplicates(subset="delivery_id", keep="first")
+
+    return out.reset_index(drop=True)
