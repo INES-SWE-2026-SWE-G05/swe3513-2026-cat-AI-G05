@@ -1,16 +1,15 @@
 """A2 · MEMBER 2 · Summarise the deliveries for the manager
 
-Owner (your GitHub username): @
-Your mobile task in the swe3409-cat1 repository: M4 (api.ts + App.tsx)
+Owner (GitHub): @umkalsumkarim72
+Mobile task  : M4 (api.ts + App.tsx) in swe3409-cat1 repository
 
 WHAT MEMBER 2 DOES
 The manager of the collection centre asks two questions every week:
 "Which sector brings the most milk, and where is milk rejected most often?"
 and "How much milk did we collect each day?". You answer both with groupby.
-Your tests use their own small table, so you can start at once: you do not
-wait for Member 1.
+Your tests use their own small table, so you can start at once.
 
-Done means: python -m pytest tests/test_a2_stats.py -v   -> 4 passed,
+Done means: python -m pytest tests/test_a2_stats.py -v  -> 4 passed,
 merged into main through a pull request reviewed by a teammate.
 """
 import pandas as pd
@@ -19,28 +18,53 @@ import pandas as pd
 def summary_by_sector(df: pd.DataFrame) -> pd.DataFrame:
     """Return one row per sector with these columns, in this order:
 
-        sector | deliveries | total_litres | rejection_rate
+        sector | total_litres | deliveries | rejected | rejection_rate
 
-    - deliveries:      number of rows in the sector       ("delivery_id", "count")
-    - total_litres:    sum of litres, rounded to 1 decimal ("litres", "sum")
-    - rejection_rate:  mean of rejected, rounded to 2 decimals ("rejected", "mean")
-    Sort by total_litres (largest first); on a tie, by sector name A-Z.
-    Finish with .reset_index(drop=True).
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Must contain columns: sector, litres, rejected.
 
-    Tip:
-        g = df.groupby("sector").agg(deliveries=("delivery_id", "count"), ...).reset_index()
-        g = g.sort_values(["total_litres", "sector"], ascending=[False, True])
+    Returns
+    -------
+    pd.DataFrame
+        Sorted by total_litres descending.
+        rejection_rate is a float in [0, 1] (rejected / deliveries).
     """
-    # TODO A2: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A2 summary_by_sector is not written yet")
+    grouped = (
+        df.groupby("sector", as_index=False)
+        .agg(
+            total_litres=("litres", "sum"),
+            deliveries=("litres", "count"),
+            rejected=("rejected", "sum"),
+        )
+    )
+    grouped["rejection_rate"] = grouped["rejected"] / grouped["deliveries"]
+    grouped = grouped.sort_values("total_litres", ascending=False).reset_index(drop=True)
+    return grouped[["sector", "total_litres", "deliveries", "rejected", "rejection_rate"]]
 
 
-def litres_by_day(df: pd.DataFrame) -> pd.DataFrame:
-    """Return columns  date | total_litres  (litres summed per day, rounded to 1 decimal),
-    sorted by date, oldest first, with .reset_index(drop=True).
+def litres_per_day(df: pd.DataFrame) -> pd.DataFrame:
+    """Return one row per calendar day with total litres collected.
 
-    Tip: df.groupby(df["date"].dt.date)["litres"].sum().round(1).reset_index()
-         then rename the columns to ["date", "total_litres"].
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Must contain columns: date (datetime64[ns]), litres.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: date (datetime64[ns]), total_litres (float).
+        Sorted by date ascending.
     """
-    # TODO A2: replace the line below with your code, then delete this TODO line.
-    raise NotImplementedError("A2 litres_by_day is not written yet")
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"]).dt.normalize()
+
+    daily = (
+        df.groupby("date", as_index=False)
+        .agg(total_litres=("litres", "sum"))
+        .sort_values("date")
+        .reset_index(drop=True)
+    )
+    return daily
